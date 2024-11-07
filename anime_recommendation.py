@@ -1,18 +1,10 @@
 import requests
-import json
 import random
+import json
 import time
 
-# Function to get a random recommendation from AniList
-def get_random_recommendation(media_type="ANIME"):
-    """
-    Fetch a random recommendation from AniList by querying a random ID.
-    Args:
-    - media_type (str): Type of media, either 'ANIME' or 'MANGA'.
-    
-    Returns:
-    - dict: A dictionary with information about the recommended title.
-    """
+# Get a random anime or manga from AniList
+def get_random_anilist(media_type="ANIME"):
     url = "https://graphql.anilist.co"
     query = """
     query ($id: Int, $type: MediaType) {
@@ -26,64 +18,36 @@ def get_random_recommendation(media_type="ANIME"):
         description
         episodes
         chapters
-        status
         genres
         averageScore
-        startDate {
-          year
-          month
-          day
-        }
       }
     }
     """
-    max_attempts = 10
-    attempt = 0
-    while attempt < max_attempts:
+    for i in range(5): 
         random_id = random.randint(1, 200000)
-        variables = {
-            "id": random_id,
-            "type": media_type
-        }
+        variables = {"id": random_id, "type": media_type}
         
         try:
             response = requests.post(url, json={'query': query, 'variables': variables})
-            response.raise_for_status()
-            data = response.json()
-    
-            if 'data' in data and data['data']['Media']:
-                return data['data']['Media']
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1}: Error querying AniList API: {e}")
-        
-        attempt += 1
-
+            if response.status_code == 200:
+                data = response.json()
+                if 'data' in data and data['data']['Media']:
+                    return data['data']['Media']
+        except:
+            pass
+        time.sleep(1) 
     return None
+    
+def save_to_file(data, filename="anilist_recommendation.json"):
+    with open(filename, 'w') as file:
+        json.dump(data, file, indent=2)
+    print("Saved recommendation to", filename)
 
-# Function to write the recommendation to a file
-def write_recommendation_to_file(info, filename):
-    """
-    Write media recommendation information to a specified file.
-    Args:
-    - info (dict): The media recommendation information.
-    - filename (str): The name of the output file.
-    """
-    try:
-        with open(filename, 'w') as file:
-            json.dump(info, file, indent=4)
-        print(f"Successfully wrote recommendation to {filename}.")
-    except IOError as e:
-        print(f"Error writing to file: {e}")
+# Main program
+media_type = "ANIME"  # Set to "MANGA" for manga recommendations
+recommendation = get_random_anilist(media_type)
 
-def main():
-    media_type = "ANIME"  # put MANGA instead for MANGA recommendations
-    filename = "anilist_recommendation.json"
-    recommendation = get_random_recommendation(media_type)
-    if recommendation:
-        write_recommendation_to_file(recommendation, filename)
-    else:
-        print("No recommendation was retrieved from AniList API after multiple attempts.")
-
-# Run the main function
-if __name__ == "__main__":
-    main()
+if recommendation:
+    save_to_file(recommendation)
+else:
+    print("Couldn't find a recommendation.")
